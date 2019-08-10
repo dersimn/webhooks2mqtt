@@ -29,12 +29,11 @@ const config = require('yargs')
     .argv;
 
 const restify = require('restify');
-const mqtt = require('mqtt');
+const MqttSmarthome = require('mqtt-smarthome-connect');
 
 log.setLevel(config.verbosity);
 log.info(pkg.name + ' ' + pkg.version + ' starting');
 log.debug('loaded config: ', config);
-
 
 const server = restify.createServer();
 server.use(restify.plugins.bodyParser({
@@ -45,28 +44,33 @@ server.get('*', controller);
 server.post('*', controller);
 
 log.info('mqtt trying to connect', config.mqttUrl);
-const mqttClient = mqtt.connect(config.mqttUrl, {
+const mqtt = new MqttSmarthome(config.mqttUrl, {
+    logger: log,
+    will: {topic: config.name + '/maintenance/online', payload: 'false', retain: true},
     username: config.mqttUser,
     password: config.mqttPass
 });
+mqtt.connect();
 
-mqttClient.once('connect', () => {
+mqtt.on('connect', () => {
+    log.info('mqtt connected', config.mqttUrl);
+    mqtt.publish(config.name + '/maintenance/online', true, {retain: true});
+
     server.listen(config.httpPort, function() {
         log.info('http server', server.name, 'listening on url', server.url);
+        mqtt.publish(config.name + '/maintenance/http/online', true, {retain: true});
     });
-})
-mqttClient.once('close', () => {
+});
+
+mqtt.on('close', () => {
     process.exit(1); // restart docker container then
 })
 
 function controller(req, res, next) {
-    const topic = `${config.name}/status/${req.path().substring(1)}`
-    let message = req.body || null
-    if (typeof message === 'object') {
-        message = JSON.stringify(message)
-    }
-    mqttClient.publish(topic, message, () => {
-        console.log(new Date(), `published: ${topic}`)
+    const topic = config.name+'/status/'+req.path().substring(1);
+    let message = req.body || 'null'
+    mqtt.publish(topic, message, () => {
+        log.debug('mqtt >', topic, message);
         res.send(req.body);
         next();
     });
