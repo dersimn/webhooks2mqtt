@@ -1,13 +1,39 @@
-'use strict'
+#!/usr/bin/env node
 
-const restify = require('restify')
-const mqtt = require('mqtt')
+const pkg = require('./package.json');
+const log = require('yalm');
+const config = require('yargs')
+    .env('webhooks')
+    .usage(pkg.name + ' ' + pkg.version + '\n' + pkg.description + '\n\nUsage: $0 [options]')
+    .describe('verbosity', 'possible values: "error", "warn", "info", "debug"')
+    .describe('name', 'instance name. used as mqtt client id and as prefix for connected topic')
+    .describe('mqtt-url', 'mqtt broker url. See https://github.com/mqttjs/MQTT.js#connect-using-a-url')
+    .describe('mqtt-user', 'username for MQTT connections')
+    .describe('mqtt-pass', 'password for MQTT connections')
+    .describe('http-port', 'port for the HTTP server to listen on')
+    .alias({
+        h: 'help',
+        m: 'mqtt-url',
+        p: 'http-port',
+        v: 'verbosity'
+    })
+    .default({
+        name: 'webhooks',
+        'mqtt-url': 'mqtt://127.0.0.1',
+        'http-port': 9001
+    })
+    .demandOption([
+    ])
+    .version()
+    .help('help')
+    .argv;
 
-const brokerUrl     = process.env.BROKER_URL    || 'mqtt://test.mosquitto.org'
-const topicBase     = process.env.TOPIC_BASE    || ''
-const httpPort      = process.env.HTTP_PORT     || 9001
-const mqttUsername  = process.env.MQTT_USERNAME
-const mqttPassword  = process.env.MQTT_PASSWORD
+const restify = require('restify');
+const mqtt = require('mqtt');
+
+log.setLevel(config.verbosity);
+log.info(pkg.name + ' ' + pkg.version + ' starting');
+log.debug('loaded config: ', config);
 
 
 const server = restify.createServer();
@@ -18,36 +44,30 @@ server.use(restify.plugins.bodyParser({
 server.get('*', controller);
 server.post('*', controller);
 
-function startHttpServer() {
-    server.listen(httpPort, function() {
-        console.log('%s listening at %s', server.name, server.url);
-    });
-}
-
-console.log(`connect mqtt client to ${brokerUrl}`)
-const mqttClient  = mqtt.connect(brokerUrl, {
-    username: mqttUsername,
-    password: mqttPassword
-})
+log.info('mqtt trying to connect', config.mqttUrl);
+const mqttClient = mqtt.connect(config.mqttUrl, {
+    username: config.mqttUser,
+    password: config.mqttPass
+});
 
 mqttClient.once('connect', () => {
-    startHttpServer()
+    server.listen(config.httpPort, function() {
+        log.info('http server', server.name, 'listening on url', server.url);
+    });
 })
 mqttClient.once('close', () => {
-    process.exit(1) // restart docker container then
+    process.exit(1); // restart docker container then
 })
 
 function controller(req, res, next) {
-  const topic = `${topicBase}${req.path().substring(1)}`
-  let message = req.body || null
-  if (typeof message === 'object') {
-      message = JSON.stringify(message)
-  }
-  mqttClient.publish(topic, message, () => {
-    console.log(new Date(), `published: ${topic}`)
-    res.send(req.body);
-    next();
-  })
+    const topic = `${config.name}/status/${req.path().substring(1)}`
+    let message = req.body || null
+    if (typeof message === 'object') {
+        message = JSON.stringify(message)
+    }
+    mqttClient.publish(topic, message, () => {
+        console.log(new Date(), `published: ${topic}`)
+        res.send(req.body);
+        next();
+    });
 }
-
-
