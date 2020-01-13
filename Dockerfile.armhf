@@ -1,12 +1,12 @@
-FROM node as builder
+FROM arm32v7/node as builder
 
 COPY . /node
 
 RUN cd /node && \
-	npm install
+    npm install
 
 
-FROM node:slim
+FROM arm32v7/node:slim
 
 COPY --from=builder /node /node
 
