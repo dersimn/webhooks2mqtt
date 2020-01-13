@@ -3,7 +3,7 @@
 const pkg = require('./package.json');
 const log = require('yalm');
 const config = require('yargs')
-    .env('webhooks')
+    .env('WEBHOOKS2MQTT')
     .usage(pkg.name + ' ' + pkg.version + '\n' + pkg.description + '\n\nUsage: $0 [options]')
     .describe('verbosity', 'possible values: "error", "warn", "info", "debug"')
     .describe('name', 'instance name. used as mqtt client id and as prefix for connected topic')
@@ -21,7 +21,7 @@ const config = require('yargs')
     .default({
         name: 'webhooks',
         'mqtt-url': 'mqtt://127.0.0.1',
-        'http-port': 9001
+        'http-port': 8801
     })
     .demandOption([
     ])

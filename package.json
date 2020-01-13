@@ -1,5 +1,5 @@
 {
-  "name": "http2mqtt",
+  "name": "webhooks2mqtt",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
