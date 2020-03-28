@@ -81,9 +81,24 @@ mqtt.on('close', () => {
 })
 
 function controller(req, res, next) {
-    log.debug('http <', req.path(), req.body, req.authorization);
+    const timestamp = Date.now();
+
+    log.debug('http <', req.path(), req.username, req.connection.remoteAddress);
+
+    const topic = config.name+'/status/'+req.path().substring(1);
+    let message = {
+        body: req.body || null,
+        query: req.getQuery() || null,
+        headers: req.headers,
+        remoteAddress: req.connection.remoteAddress,
+        username: req.username,
+        ts: timestamp,
+        authorization: req.authorization || null
+    };
 
     if (config.httpAuth) {
+        message.authorization = req.authorization;
+
         if ('scheme' in req.authorization && req.authorization.scheme == 'Basic') {
             let authOk = false;
             for (let i = 0; i < authUsers.length; i++) {
@@ -102,9 +117,7 @@ function controller(req, res, next) {
             }
         }
     }
-
-    const topic = config.name+'/status/'+req.path().substring(1);
-    let message = req.body || 'null'
+    
     mqtt.publish(topic, message, () => {
         res.send(req.body);
         next();
