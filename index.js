@@ -44,6 +44,8 @@ server.use(restify.plugins.queryParser());
 
 server.get('*', controller);
 server.post('*', controller);
+server.put('*', controller);
+server.del('*', controller);
 
 log.info('mqtt trying to connect', config.mqttUrl);
 const mqtt = new MqttSmarthome(config.mqttUrl, {
