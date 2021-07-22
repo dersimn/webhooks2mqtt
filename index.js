@@ -11,7 +11,6 @@ const config = require('yargs')
     .describe('mqtt-user', 'username for MQTT connections')
     .describe('mqtt-pass', 'password for MQTT connections')
     .describe('http-port', 'port for the HTTP server to listen on')
-    .describe('http-auth', 'username/password combination for basic http auth. Username and password seperated by space')
     .alias({
         h: 'help',
         m: 'mqtt-url',
@@ -36,23 +35,12 @@ log.setLevel(config.verbosity);
 log.info(pkg.name + ' ' + pkg.version + ' starting');
 log.debug('loaded config: ', config);
 
-const authUsers = [];
-if (typeof config.httpAuth === 'string') {
-    let tmp = config.httpAuth.split(' ');
-    
-    if (tmp % 2) process.exit(2); // if not pairs were provided
-
-    for (let i = 0; i < tmp.length; i += 2) {
-        authUsers.push({username: tmp[i], password: tmp[i+1]});
-    }
-}
-log.debug('authorized users', authUsers);
-
 const server = restify.createServer();
 server.use(restify.plugins.bodyParser({
     requestBodyOnGet: true
 }));
 server.use(restify.plugins.authorizationParser());
+server.use(restify.plugins.queryParser());
 
 server.get('*', controller);
 server.post('*', controller);
@@ -83,41 +71,18 @@ mqtt.on('close', () => {
 function controller(req, res, next) {
     const timestamp = Date.now();
 
-    log.debug('http <', req.path(), req.username, req.connection.remoteAddress);
+    log.debug('http <', req.path(), req.connection.remoteAddress);
 
     const topic = config.name+'/status/'+req.path().substring(1);
     let message = {
-        body: req.body || null,
-        query: req.getQuery() || null,
+        body: req.body,
+        query: req.query,
         headers: req.headers,
         remoteAddress: req.connection.remoteAddress,
-        username: req.username,
         ts: timestamp,
-        authorization: req.authorization || null,
+        authorization: req.authorization,
         method: req.method
     };
-
-    if (config.httpAuth) {
-        message.authorization = req.authorization;
-
-        if ('scheme' in req.authorization && req.authorization.scheme == 'Basic') {
-            let authOk = false;
-            for (let i = 0; i < authUsers.length; i++) {
-                if (
-                    req.authorization.basic.username == authUsers[i].username &&
-                    req.authorization.basic.password == authUsers[i].password
-                ) {
-                    authOk = true;
-                    break;
-                }
-            }
-
-            if (!authOk) {
-                log.warn('request not authorized', req.authorization);
-                return;
-            }
-        }
-    }
     
     mqtt.publish(topic, message, () => {
         res.send(req.body);
