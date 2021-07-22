@@ -93,7 +93,8 @@ function controller(req, res, next) {
         remoteAddress: req.connection.remoteAddress,
         username: req.username,
         ts: timestamp,
-        authorization: req.authorization || null
+        authorization: req.authorization || null,
+        method: req.method
     };
 
     if (config.httpAuth) {
