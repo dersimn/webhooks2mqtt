@@ -6,7 +6,8 @@ const config = require('yargs')
     .env('WEBHOOKS2MQTT')
     .usage(pkg.name + ' ' + pkg.version + '\n' + pkg.description + '\n\nUsage: $0 [options]')
     .describe('verbosity', 'possible values: "error", "warn", "info", "debug"')
-    .describe('name', 'instance name. used as mqtt client id and as prefix for connected topic')
+    .describe('name', 'instance name. used as mqtt client id')
+    .describe('prefix', 'prefix for connected topic')
     .describe('mqtt-url', 'mqtt broker url. See https://github.com/mqttjs/MQTT.js#connect-using-a-url')
     .describe('mqtt-user', 'username for MQTT connections')
     .describe('mqtt-pass', 'password for MQTT connections')
@@ -50,7 +51,7 @@ server.del('*', controller);
 log.info('mqtt trying to connect', config.mqttUrl);
 const mqtt = new MqttSmarthome(config.mqttUrl, {
     logger: log,
-    will: {topic: config.name + '/maintenance/online', payload: 'false', retain: true},
+    will: {topic: config.prefix + '/online', payload: 'false', retain: true},
     username: config.mqttUser,
     password: config.mqttPass
 });
@@ -58,11 +59,11 @@ mqtt.connect();
 
 mqtt.on('connect', () => {
     log.info('mqtt connected', config.mqttUrl);
-    mqtt.publish(config.name + '/maintenance/online', true, {retain: true});
+    mqtt.publish(config.prefix + '/online', true, {retain: true});
 
     server.listen(config.httpPort, function() {
         log.info('http server', server.name, 'listening on url', server.url);
-        mqtt.publish(config.name + '/maintenance/http/online', true, {retain: true});
+        mqtt.publish(config.prefix + '/online/http', true, {retain: true});
     });
 });
 
@@ -75,7 +76,7 @@ function controller(req, res, next) {
 
     log.debug('http <', req.path(), req.connection.remoteAddress);
 
-    const topic = config.name+'/status/'+req.path().substring(1);
+    const topic = config.prefix + '/status/' + req.path().substring(1);
     let message = {
         body: req.body,
         query: req.query,
