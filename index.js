@@ -20,6 +20,7 @@ const config = require('yargs')
     })
     .default({
         name: 'webhooks',
+        prefix: 'dersimn/webhooks2mqtt',
         'mqtt-url': 'mqtt://127.0.0.1',
         'http-port': 8801
     })
