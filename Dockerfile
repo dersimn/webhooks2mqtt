@@ -1,4 +1,4 @@
-FROM node as builder
+FROM node:22-alpine as builder
 
 COPY . /node
 
@@ -7,7 +7,7 @@ RUN cd /node && \
 
 # ------------------------------------------------------------------------------
 
-FROM node:slim
+FROM node:22-alpine
 
 COPY --from=builder /node /node
 

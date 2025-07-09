@@ -9,9 +9,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "mqtt-smarthome-connect": "0.0.7",
-    "restify": "^8.4.0",
+    "mqtt-smarthome-connect": "0.0.8",
+    "restify": "^11.1.0",
     "yalm": "^4.1.0",
-    "yargs": "^13.3.0"
+    "yargs": "^17.0.0"
   }
 }
