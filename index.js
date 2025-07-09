@@ -93,3 +93,13 @@ function controller(req, res, next) {
         next();
     });
 }
+
+process.on('SIGINT', () => {
+    log.info('got SIGINT. exiting.');
+    process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+    log.info('got SIGTERM. exiting.');
+    process.exit(0);
+});
