@@ -77,8 +77,9 @@ function controller(req, res, next) {
 
     log.debug('http <', req.path(), req.connection.remoteAddress);
 
-    const topic = config.prefix + '/status/' + req.path().substring(1);
+    const topic = config.prefix + '/status' + req.path();
     let message = {
+        path: req.path(),
         body: req.body,
         query: req.query,
         headers: req.headers,
