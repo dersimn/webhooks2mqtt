@@ -31,7 +31,7 @@ const config = require('yargs')
     .argv;
 
 const restify = require('restify');
-const MqttSmarthome = require('mqtt-smarthome-connect');
+const mqtt = require('mqtt');
 
 log.setLevel(config.verbosity);
 log.info(pkg.name + ' ' + pkg.version + ' starting');
@@ -50,25 +50,24 @@ server.put('*', controller);
 server.del('*', controller);
 
 log.info('mqtt trying to connect', config.mqttUrl);
-const mqtt = new MqttSmarthome(config.mqttUrl, {
-    logger: log,
+const client = mqtt.connect(config.mqttUrl, {
+    log: (...args) => {log.debug(...args)},
     will: {topic: config.prefix + '/online', payload: 'false', retain: true},
     username: config.mqttUser,
     password: config.mqttPass
 });
-mqtt.connect();
 
-mqtt.on('connect', () => {
+client.on('connect', () => {
     log.info('mqtt connected', config.mqttUrl);
-    mqtt.publish(config.prefix + '/online', true, {retain: true});
+    client.publish(config.prefix + '/online', 'true', {retain: true});
 
     server.listen(config.httpPort, function() {
         log.info('http server', server.name, 'listening on url', server.url);
-        mqtt.publish(config.prefix + '/online/http', true, {retain: true});
+        client.publish(config.prefix + '/online/http', 'true', {retain: true});
     });
 });
 
-mqtt.on('close', () => {
+client.on('close', () => {
     process.exit(1); // restart docker container then
 })
 
@@ -89,7 +88,7 @@ function controller(req, res, next) {
         method: req.method
     };
     
-    mqtt.publish(topic, message, () => {
+    client.publish(topic, JSON.stringify(message), () => {
         res.send(req.body);
         next();
     });
